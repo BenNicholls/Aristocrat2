@@ -56,3 +56,13 @@ func squareToAlgebraic(s int) string {
 
 	return alg + fmt.Sprint(8-(s/8))
 }
+
+//return the rank of the square
+func rank(square int) int {
+	return 8 - square/8
+}
+
+//returns the number of the file of the square
+func file(square int) int {
+	return square%8 + 1
+}

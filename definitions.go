@@ -19,6 +19,12 @@ var pieceNamesShort [6]string      //piece names for chess notation
 var pieceNamesDisplay [2][6]string //piece names for display. also the FEN shortform. indexed by colour first.
 var displayLookup map[rune]piece
 
+//piece move bitboards
+var whitePawnMoves [64]uint64
+var whitePawnAttacks [64]uint64
+var blackPawnMoves [64]uint64
+var blackPawnAttacks [64]uint64
+
 func init() {
 	pieceNames = [6]string{"Pawn", "Knight", "Bishop", "Rook", "Queen", "King"}
 	pieceNamesShort = [6]string{"", "N", "B", "R", "Q", "K"}
@@ -37,4 +43,29 @@ func init() {
 	displayLookup['r'] = piece{BLACK, ROOK}
 	displayLookup['q'] = piece{BLACK, QUEEN}
 	displayLookup['k'] = piece{BLACK, KING}
+
+	//generate pawn move bitboards
+	for i := 0; i < 64; i++ {
+		//no pawns on back rows
+		if rank(i) == 1 || rank(i) == 8 {
+			continue
+		}
+		whitePawnMoves[i] = setBit(whitePawnMoves[i], i-8)
+		blackPawnMoves[i] = setBit(blackPawnMoves[i], i+8)
+
+		if rank(i) == 2 {
+			whitePawnMoves[i] = setBit(whitePawnMoves[i], i-16)
+		} else if rank(i) == 7 {
+			blackPawnMoves[i] = setBit(blackPawnMoves[i], i+16)
+		}
+
+		if file(i) != 1 {
+			whitePawnAttacks[i] = setBit(whitePawnAttacks[i], i-9)
+			blackPawnAttacks[i] = setBit(blackPawnAttacks[i], i+7)
+		}
+		if file(i) != 8 {
+			whitePawnAttacks[i] = setBit(whitePawnAttacks[i], i-7)
+			blackPawnAttacks[i] = setBit(blackPawnAttacks[i], i+9)
+		}
+	}
 }

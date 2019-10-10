@@ -17,9 +17,9 @@ type position struct {
 	fullMoveCounter  int
 
 	//bitboards! so many bitboards!
-	white  bitboard
-	black  bitboard
-	pieces []bitboard //one for each kind of piece
+	white  uint64
+	black  uint64
+	pieces [6]uint64 //one for each kind of piece
 }
 
 func (p position) Print() {
@@ -78,7 +78,7 @@ func (p position) Print() {
 		fmt.Println("Black can castle queenside.")
 	}
 
-	if p.enpassant > 0 {
+	if p.enpassant >= 0 {
 		fmt.Println("Enpassant square: ", squareToAlgebraic(p.enpassant))
 	}
 
@@ -88,7 +88,6 @@ func (p position) Print() {
 
 func NewPosition(fen string) (pos position) {
 	pos = position{}
-	pos.pieces = make([]bitboard, 6)
 
 	if fen == "" {
 		fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
@@ -141,8 +140,13 @@ func NewPosition(fen string) (pos position) {
 		pos.enpassant = -1
 	}
 
-	pos.fiftyMoveCounter = int(fenPieces[4][0] - '0')
-	pos.fullMoveCounter = int(fenPieces[5][0] - '0')
+	if len(fenPieces) >= 5 {
+		pos.fiftyMoveCounter = int(fenPieces[4][0] - '0')
+	}
+
+	if len(fenPieces) >= 6 {
+		pos.fullMoveCounter = int(fenPieces[5][0] - '0')
+	}
 
 	return
 }

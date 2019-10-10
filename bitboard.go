@@ -5,39 +5,37 @@ import (
 	"math/bits"
 )
 
-type bitboard uint64
-
-func (b bitboard) string() string {
+func bitboardToString(b uint64) string {
 	return fmt.Sprintf("%064b", b)
 }
 
-func (b bitboard) print() {
-	s := b.string()
+func outputBitboard(b uint64) {
+	s := bitboardToString(b)
 	for i := 0; i < 8; i++ {
 		fmt.Println(s[i*8 : (i+1)*8])
 	}
 }
 
-func (b bitboard) count() int {
-	return bits.OnesCount64(uint64(b))
+func countBits(b uint64) int {
+	return bits.OnesCount64(b)
 }
 
-func checkBit(b bitboard, i int) bool {
-	if i < 0 || i > 63 {
-		return false
-	}
-
+func checkBit(b uint64, i int) bool {
 	return ((1 << (63 - i)) & b) != 0
 }
 
-func setBit(b bitboard, i int) bitboard {
-	if i < 0 || i > 63 {
-		return b
-	}
-
+func setBit(b uint64, i int) uint64 {
 	return (1 << (63 - i)) | b
 }
 
-func clearBit(b bitboard, i int) bitboard {
-	return (1 << (63 - i)) &^ b
+func clearBit(b uint64, i int) uint64 {
+	return b &^ (1 << (63 - i))
+}
+
+func forEachBit(b uint64, f func(square int)) {
+	for i := 0; b != 0; {
+		i = bits.LeadingZeros64(b)
+		f(i)
+		b = clearBit(b, i)
+	}
 }
