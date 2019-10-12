@@ -66,3 +66,10 @@ func rank(square int) int {
 func file(square int) int {
 	return square%8 + 1
 }
+
+func opponent(col int) int {
+	if col == WHITE {
+		return BLACK
+	}
+	return WHITE
+}

@@ -39,3 +39,13 @@ func forEachBit(b uint64, f func(square int)) {
 		b = clearBit(b, i)
 	}
 }
+
+//reports position of leftmost bit
+func leftBit(b uint64) int {
+	return bits.LeadingZeros64(b)
+}
+
+//reports position of rightmost bit
+func rightBit(b uint64) int {
+	return 63 - bits.TrailingZeros64(b)
+}

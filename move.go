@@ -17,11 +17,15 @@ const (
 	M_TOOFFSET           = 6
 	M_PIECEOFFSET        = 12
 	M_PROMOTEPIECEOFFSET = 15
+	M_CAPTUREPIECEOFFSET = 18
 
 	//flags
-	M_PROMOTEFLAG = (1 << 61)
-	M_CAPTUREFLAG = (1 << 62)
-	M_TURNFLAG    = (1 << 63)
+	M_PAWNJUMPFLAG = (1 << 58)
+	M_CASTLEKFLAG  = (1 << 59)
+	M_CASTLEQFLAG  = (1 << 60)
+	M_PROMOTEFLAG  = (1 << 61)
+	M_CAPTUREFLAG  = (1 << 62)
+	M_TURNFLAG     = (1 << 63)
 )
 
 type move uint64
@@ -46,17 +50,31 @@ func (m move) promotedPiece() int {
 	return int(M_PIECEMASK & (m >> M_PROMOTEPIECEOFFSET))
 }
 
-//bit 61: promotion flag
+func (m move) capturePiece() int {
+	return int(M_PIECEMASK & (m >> M_CAPTUREPIECEOFFSET))
+}
+
+func (m move) pawnJump() bool {
+	return M_PAWNJUMPFLAG&m != 0
+}
+
+func (m move) castleK() bool {
+	return M_CASTLEKFLAG&m != 0
+}
+
+func (m move) castleQ() bool {
+	return M_CASTLEQFLAG&m != 0
+}
+
 func (m move) promote() bool {
 	return M_PROMOTEFLAG&m != 0
 }
 
-//bit 62: capture flag.
 func (m move) capture() bool {
 	return M_CAPTUREFLAG&m != 0
 }
 
-//bit 63: turn. 0 = WHITE, 1 = BLACK
+//0 = WHITE, 1 = BLACK
 func (m move) turn() int {
 	if M_TURNFLAG&m == 0 {
 		return WHITE
@@ -65,13 +83,18 @@ func (m move) turn() int {
 }
 
 func (m move) string() (s string) {
+	if m.castleK() {
+		return "0-0"
+	} else if m.castleQ() {
+		return "0-0-0"
+	}
 	s += pieceNamesShort[m.piece()] + squareToAlgebraic(m.from())
 	if m.capture() {
 		s += "x"
 	}
 	s += squareToAlgebraic(m.to())
 	if m.promote() {
-		s += pieceNamesShort[m.promotedPiece()]
+		s += "=" + pieceNamesShort[m.promotedPiece()]
 	}
 	return
 }
@@ -92,11 +115,12 @@ func (m move) output() {
 	}
 }
 
-func packMove(from, to, piece, promotePiece, turn int, capture bool) move {
+func packMove(from, to, piece, promotePiece, capturePiece, turn int, capture bool) move {
 	var m uint64
 
 	//values (right side)
-	m = uint64(promotePiece)
+	m = uint64(capturePiece)
+	m = (m << M_PIECESIZE) | uint64(promotePiece)
 	m = (m << M_PIECESIZE) | uint64(piece)
 	m = (m << M_SPACESIZE) | uint64(to)
 	m = (m << M_SPACESIZE) | uint64(from)
@@ -110,6 +134,17 @@ func packMove(from, to, piece, promotePiece, turn int, capture bool) move {
 	}
 	if turn == BLACK {
 		m = m | M_TURNFLAG
+	}
+	if piece == KING {
+		if from-to == -2 {
+			m = m | M_CASTLEKFLAG
+		} else if from-to == 2 {
+			m = m | M_CASTLEQFLAG
+		}
+	} else if piece == PAWN {
+		if (turn == WHITE && from-to == 16) || (turn == BLACK && from-to == -16) {
+			m = m | M_PAWNJUMPFLAG
+		}
 	}
 
 	return move(m)
