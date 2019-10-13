@@ -57,7 +57,7 @@ func (cli *CLI) gameLoop() {
 				plys, err := strconv.Atoi(cmd[1])
 				if err == nil {
 					startTime := time.Now()
-					nodes := game.perft(plys)
+					nodes := multiThreadedPerft(&game, plys)
 					fmt.Printf("Perft %d: %d. (%.0f n/s)\n", plys, nodes, float64(nodes)/time.Since(startTime).Seconds())
 				} else {
 					fmt.Println("Perft command argument must be integer")
@@ -84,4 +84,26 @@ func (cli *CLI) gameLoop() {
 			fmt.Print(">>> ")
 		}
 	}
+}
+
+func multiThreadedPerft(pos *position, plys int) (nodes int) {
+	list := movegen(pos)
+	if plys <= 0 {
+		return 0
+	} else if plys == 1 {
+		return len(list)
+	}
+	results := make(chan int, len(list))
+	for _, m := range list {
+		nextPosition := *pos
+		nextPosition.doMove(m)
+		go func() {
+			results <- nextPosition.perft(plys - 1)
+		}()
+	}
+	for i := 0; i < len(list); i++ {
+		nodes += <-results
+	}
+
+	return
 }

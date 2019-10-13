@@ -322,13 +322,8 @@ func (p *position) doMove(m move) {
 		p.castleWK = false
 	}
 
-	if p.toMove == WHITE {
-		p.toMove = BLACK
-	} else {
-		p.toMove = WHITE
-	}
-
 	p.moveHistory = append(p.moveHistory, m)
+	p.toMove = opponent(p.toMove)
 }
 
 func (p position) perft(n int) (nodes int) {
@@ -355,7 +350,7 @@ func (p position) divide(n int) {
 	for _, m := range list {
 		nextPosition := p
 		nextPosition.doMove(m)
-		p := nextPosition.perft(n - 1)
+		p := multiThreadedPerft(&nextPosition, n-1)
 		total += p
 		fmt.Println(m.string()+":", p)
 	}
