@@ -2,6 +2,8 @@ package main
 
 import "fmt"
 
+var seed uint64 = 80
+
 func algebraicToSquare(s string) int {
 	if len(s) != 2 {
 		return 0
@@ -72,4 +74,9 @@ func opponent(col int) int {
 		return BLACK
 	}
 	return WHITE
+}
+
+func generateKey() uint64 {
+	seed = (6364136223846793005*seed + 1442695040888963407) % 0x1000000000000000
+	return seed
 }

@@ -12,11 +12,14 @@ import (
 //import "github.com/pkg/profile"
 
 var game position
+var table *hashTable
 
 func main() {
 	//defer profile.Start(profile.CPUProfile, profile.ProfilePath(".")).Stop()
 	game = NewPosition("")
 	game.Print()
+
+	table = NewHashTable(256)
 
 	//command line mode
 	cli := CLI{}

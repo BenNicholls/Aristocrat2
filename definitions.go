@@ -40,6 +40,15 @@ var knightMoves [64]uint64
 var kingMoves [64]uint64
 var slidingMoves [8][64]uint64 //indexed by direction
 
+type zobristKeys struct {
+	black     uint64
+	pieces    [2][6][64]uint64
+	enpassant [8]uint64
+	castle    [4]uint64
+}
+
+var zobrist zobristKeys
+
 type piece struct {
 	colour int
 	piece  int
@@ -176,6 +185,21 @@ func init() {
 				}
 				ray += off
 				slidingMoves[dir][i] = setBit(slidingMoves[dir][i], ray)
+			}
+		}
+	}
+
+	zobrist = zobristKeys{}
+	zobrist.black = generateKey()
+	for i := 0; i < 64; i++ {
+		for p := PAWN; p <= KING; p++ {
+			zobrist.pieces[WHITE][p][i] = generateKey()
+			zobrist.pieces[BLACK][p][i] = generateKey()
+		}
+		if i < 8 {
+			zobrist.enpassant[i] = generateKey()
+			if i < 4 {
+				zobrist.castle[i] = generateKey()
 			}
 		}
 	}

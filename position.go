@@ -23,6 +23,8 @@ type position struct {
 	//bitboards! so many bitboards!
 	colours [2]uint64 //one for each colour. OR these together to get the occupied board
 	pieces  [6]uint64 //one for each kind of piece
+
+	hash uint64 //zobrist hash. generated at start, then incrementally updated.
 }
 
 func NewPosition(fen string) (pos position) {
@@ -84,6 +86,8 @@ func NewPosition(fen string) (pos position) {
 		pos.fullMoveCounter = int(fenPieces[5][0] - '0')
 	}
 
+	pos.generateZobristHash()
+
 	return
 }
 
@@ -120,6 +124,7 @@ func (p position) Print() {
 	}
 	fmt.Print("+---+---+---+---+---+---+---+---+\n")
 
+	fmt.Println("HASH:", p.hash)
 	fmt.Println("Turn ", p.fullMoveCounter)
 	if p.toMove == WHITE {
 		fmt.Println("White to move.")
@@ -324,9 +329,16 @@ func (p *position) doMove(m move) {
 
 	p.moveHistory = append(p.moveHistory, m)
 	p.toMove = opponent(p.toMove)
+
+	p.generateZobristHash()
 }
 
 func (p position) perft(n int) (nodes int) {
+	if entry, ok := table.Load(p.hash); ok {
+		if entry.depth == n {
+			return entry.score
+		}
+	}
 	list := movegen(&p)
 	if n == 1 {
 		return len(list)
@@ -338,6 +350,7 @@ func (p position) perft(n int) (nodes int) {
 		}
 	}
 
+	table.Store(p.hash, n, 0, nodes)
 	return
 }
 
@@ -357,4 +370,42 @@ func (p position) divide(n int) {
 
 	fmt.Println("Total: ", total)
 	return
+}
+
+func (p *position) generateZobristHash() {
+	p.hash = 0
+
+	//pieces
+	for colour := WHITE; colour <= BLACK; colour++ {
+		for piece := PAWN; piece <= KING; piece++ {
+			forEachBit(p.colours[colour]&p.pieces[piece], func(square int) {
+				p.hash = p.hash ^ zobrist.pieces[colour][piece][square]
+			})
+		}
+	}
+
+	//castling
+	if p.castleWK {
+		p.hash ^= zobrist.castle[0]
+	}
+	if p.castleWQ {
+		p.hash ^= zobrist.castle[1]
+	}
+	if p.castleBK {
+		p.hash ^= zobrist.castle[2]
+	}
+	if p.castleBQ {
+		p.hash ^= zobrist.castle[3]
+	}
+
+	//enpassant
+	if p.enpassant >= 0 {
+		p.hash ^= zobrist.enpassant[file(p.enpassant)-1]
+	}
+
+	//turn
+	if p.toMove == BLACK {
+		p.hash ^= zobrist.black
+	}
+
 }
