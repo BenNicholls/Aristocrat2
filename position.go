@@ -86,7 +86,7 @@ func NewPosition(fen string) (pos position) {
 		pos.fullMoveCounter = int(fenPieces[5][0] - '0')
 	}
 
-	pos.generateZobristHash()
+	pos.hash = pos.generateZobristHash()
 
 	return
 }
@@ -220,6 +220,19 @@ func (p *position) getKingSquare(col int) int {
 	return leftBit(p.pieces[KING] & p.colours[col])
 }
 
+//removes a piece from the position, updating bitboards and stuff as appropriate
+func (p *position) removePiece(colour, piece, square int) {
+	p.colours[colour] = clearBit(p.colours[colour], square)
+	p.pieces[piece] = clearBit(p.pieces[piece], square)
+	p.hash ^= zobrist.pieces[colour][piece][square]
+}
+
+func (p *position) addPiece(colour, piece, square int) {
+	p.colours[colour] = setBit(p.colours[colour], square)
+	p.pieces[piece] = setBit(p.pieces[piece], square)
+	p.hash ^= zobrist.pieces[colour][piece][square]
+}
+
 func (p *position) doMove(m move) {
 	p.fiftyMoveCounter++
 	if p.toMove == BLACK {
@@ -227,25 +240,10 @@ func (p *position) doMove(m move) {
 	}
 
 	//update bitboards
-	p.colours[p.toMove] = clearBit(p.colours[p.toMove], m.from())
-	p.colours[p.toMove] = setBit(p.colours[p.toMove], m.to())
-
-	p.pieces[m.piece()] = clearBit(p.pieces[m.piece()], m.from())
+	p.removePiece(p.toMove, m.piece(), m.from())
 
 	if m.capture() {
 		p.fiftyMoveCounter = 0
-		p.colours[opponent(p.toMove)] = clearBit(p.colours[opponent(p.toMove)], m.to())
-		p.pieces[m.capturePiece()] = clearBit(p.pieces[m.capturePiece()], m.to())
-	}
-	if m.promote() {
-		p.pieces[m.promotedPiece()] = setBit(p.pieces[m.promotedPiece()], m.to())
-	} else {
-		p.pieces[m.piece()] = setBit(p.pieces[m.piece()], m.to())
-	}
-
-	if m.piece() == PAWN {
-		p.fiftyMoveCounter = 0
-		//capture enpassant
 		if m.to() == p.enpassant {
 			var captureSquare int
 			if p.toMove == WHITE {
@@ -253,84 +251,125 @@ func (p *position) doMove(m move) {
 			} else {
 				captureSquare = p.enpassant - 8
 			}
-			p.colours[opponent(p.toMove)] = clearBit(p.colours[opponent(p.toMove)], captureSquare)
-			p.pieces[PAWN] = clearBit(p.pieces[PAWN], captureSquare)
+			p.removePiece(opponent(p.toMove), PAWN, captureSquare)
+		} else {
+			p.removePiece(opponent(p.toMove), m.capturePiece(), m.to())
 		}
 	}
 
+	if m.promote() {
+		p.addPiece(p.toMove, m.promotedPiece(), m.to())
+	} else {
+		p.pieces[m.piece()] = setBit(p.pieces[m.piece()], m.to())
+		p.addPiece(p.toMove, m.piece(), m.to())
+	}
+
+	if m.piece() == PAWN {
+		p.fiftyMoveCounter = 0
+	}
+
 	//update enpassant square
+	if p.enpassant != -1 {
+		p.hash ^= zobrist.enpassant[file(p.enpassant)-1]
+	}
 	if m.pawnJump() {
 		if p.toMove == WHITE {
 			p.enpassant = m.from() - 8
 		} else {
 			p.enpassant = m.from() + 8
 		}
+		p.hash ^= zobrist.enpassant[file(p.enpassant)-1]
 	} else {
 		p.enpassant = -1
 	}
 
 	//move rooks for castling
 	if m.castleK() {
-		p.pieces[ROOK] = setBit(p.pieces[ROOK], m.from()+1)
-		p.colours[p.toMove] = setBit(p.colours[p.toMove], m.from()+1)
+		p.addPiece(p.toMove, ROOK, m.from()+1)
 		if p.toMove == WHITE {
-			p.pieces[ROOK] = clearBit(p.pieces[ROOK], 63)
-			p.colours[WHITE] = clearBit(p.colours[WHITE], 63)
+			p.removePiece(WHITE, ROOK, 63)
 		} else {
-			p.pieces[ROOK] = clearBit(p.pieces[ROOK], 7)
-			p.colours[BLACK] = clearBit(p.colours[BLACK], 7)
+			p.removePiece(BLACK, ROOK, 7)
 		}
 	} else if m.castleQ() {
-		p.pieces[ROOK] = setBit(p.pieces[ROOK], m.from()-1)
-		p.colours[p.toMove] = setBit(p.colours[p.toMove], m.from()-1)
+		p.addPiece(p.toMove, ROOK, m.from()-1)
 		if p.toMove == WHITE {
-			p.pieces[ROOK] = clearBit(p.pieces[ROOK], 56)
-			p.colours[WHITE] = clearBit(p.colours[WHITE], 56)
+			p.removePiece(WHITE, ROOK, 56)
 		} else {
-			p.pieces[ROOK] = clearBit(p.pieces[ROOK], 0)
-			p.colours[BLACK] = clearBit(p.colours[BLACK], 0)
+			p.removePiece(BLACK, ROOK, 0)
 		}
 	}
 
 	//update castling availability
 	if m.piece() == KING {
 		if p.toMove == WHITE {
-			p.castleWK = false
-			p.castleWQ = false
+			if p.castleWK {
+				p.castleWK = false
+				p.hash ^= zobrist.castle[0]
+			}
+			if p.castleWQ {
+				p.castleWQ = false
+				p.hash ^= zobrist.castle[1]
+			}
 		} else {
-			p.castleBK = false
-			p.castleBQ = false
+			if p.castleBK {
+				p.castleBK = false
+				p.hash ^= zobrist.castle[2]
+			}
+			if p.castleBQ {
+				p.castleBQ = false
+				p.hash ^= zobrist.castle[3]
+			}
 		}
 	} else if m.piece() == ROOK {
 		if file(m.from()) == 1 {
-			if p.toMove == WHITE {
+			if p.toMove == WHITE && p.castleWQ {
 				p.castleWQ = false
-			} else {
+				p.hash ^= zobrist.castle[1]
+			} else if p.toMove == BLACK && p.castleBQ {
 				p.castleBQ = false
+				p.hash ^= zobrist.castle[3]
 			}
 		} else if file(m.from()) == 8 {
-			if p.toMove == WHITE {
+			if p.toMove == WHITE && p.castleWK {
 				p.castleWK = false
-			} else {
+				p.hash ^= zobrist.castle[0]
+			} else if p.toMove == BLACK && p.castleBK {
 				p.castleBK = false
+				p.hash ^= zobrist.castle[2]
 			}
 		}
 	}
-	switch m.to() { //checking for rook captures that break castling
-	case 0:
-		p.castleBQ = false
-	case 7:
-		p.castleBK = false
-	case 56:
-		p.castleWQ = false
-	case 63:
-		p.castleWK = false
+
+	//checking for rook captures that break castling
+	if m.capturePiece() == ROOK {
+		switch m.to() {
+		case 0:
+			if p.castleBQ {
+				p.castleBQ = false
+				p.hash ^= zobrist.castle[3]
+			}
+		case 7:
+			if p.castleBK {
+				p.castleBK = false
+				p.hash ^= zobrist.castle[2]
+			}
+		case 56:
+			if p.castleWQ {
+				p.castleWQ = false
+				p.hash ^= zobrist.castle[1]
+			}
+		case 63:
+			if p.castleWK {
+				p.castleWK = false
+				p.hash ^= zobrist.castle[0]
+			}
+		}
 	}
 
 	p.moveHistory = append(p.moveHistory, m)
 	p.toMove = opponent(p.toMove)
-
-	p.generateZobristHash()
+	p.hash ^= zobrist.black
 }
 
 func (p position) perft(n int) (nodes int) {
@@ -372,40 +411,39 @@ func (p position) divide(n int) {
 	return
 }
 
-func (p *position) generateZobristHash() {
-	p.hash = 0
-
+func (p *position) generateZobristHash() (hash uint64) {
 	//pieces
 	for colour := WHITE; colour <= BLACK; colour++ {
 		for piece := PAWN; piece <= KING; piece++ {
 			forEachBit(p.colours[colour]&p.pieces[piece], func(square int) {
-				p.hash = p.hash ^ zobrist.pieces[colour][piece][square]
+				hash ^= zobrist.pieces[colour][piece][square]
 			})
 		}
 	}
 
 	//castling
 	if p.castleWK {
-		p.hash ^= zobrist.castle[0]
+		hash ^= zobrist.castle[0]
 	}
 	if p.castleWQ {
-		p.hash ^= zobrist.castle[1]
+		hash ^= zobrist.castle[1]
 	}
 	if p.castleBK {
-		p.hash ^= zobrist.castle[2]
+		hash ^= zobrist.castle[2]
 	}
 	if p.castleBQ {
-		p.hash ^= zobrist.castle[3]
+		hash ^= zobrist.castle[3]
 	}
 
 	//enpassant
 	if p.enpassant >= 0 {
-		p.hash ^= zobrist.enpassant[file(p.enpassant)-1]
+		hash ^= zobrist.enpassant[file(p.enpassant)-1]
 	}
 
 	//turn
 	if p.toMove == BLACK {
-		p.hash ^= zobrist.black
+		hash ^= zobrist.black
 	}
 
+	return
 }

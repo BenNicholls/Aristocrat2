@@ -78,14 +78,14 @@ func movegen(pos *position) (list moveList) {
 			if pos.castleWK {
 				if occupied&0b110 == 0 {
 					if !pos.isSquareAttacked(61, BLACK) && !pos.isSquareAttacked(62, BLACK) { //can't castle through or into check either
-						list = append(list, packMove(fromSquare, 62, KING, 0, 0, pos.toMove, true))
+						list = append(list, packMove(fromSquare, 62, KING, 0, 0, pos.toMove, false))
 					}
 				}
 			}
 			if pos.castleWQ {
 				if occupied&0b1110000 == 0 {
 					if !pos.isSquareAttacked(58, BLACK) && !pos.isSquareAttacked(59, BLACK) { //can't castle through or into check either
-						list = append(list, packMove(fromSquare, 58, KING, 0, 0, pos.toMove, true))
+						list = append(list, packMove(fromSquare, 58, KING, 0, 0, pos.toMove, false))
 					}
 				}
 			}
@@ -93,14 +93,14 @@ func movegen(pos *position) (list moveList) {
 			if pos.castleBK {
 				if occupied&(0b11<<57) == 0 {
 					if !pos.isSquareAttacked(5, WHITE) && !pos.isSquareAttacked(6, WHITE) { //can't castle through or into check either
-						list = append(list, packMove(fromSquare, 6, KING, 0, 0, pos.toMove, true))
+						list = append(list, packMove(fromSquare, 6, KING, 0, 0, pos.toMove, false))
 					}
 				}
 			}
 			if pos.castleBQ {
 				if occupied&(0b111<<60) == 0 {
 					if !pos.isSquareAttacked(2, WHITE) && !pos.isSquareAttacked(3, WHITE) { //can't castle through or into check either
-						list = append(list, packMove(fromSquare, 2, KING, 0, 0, pos.toMove, true))
+						list = append(list, packMove(fromSquare, 2, KING, 0, 0, pos.toMove, false))
 					}
 				}
 			}
