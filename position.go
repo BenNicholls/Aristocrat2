@@ -42,8 +42,7 @@ func NewPosition(fen string) (pos position) {
 	for ch, _, err := posString.ReadRune(); err == nil; ch, _, err = posString.ReadRune() {
 		p, ok := displayLookup[ch]
 		if ok {
-			pos.pieces[p.piece] = setBit(pos.pieces[p.piece], square)
-			pos.colours[p.colour] = setBit(pos.colours[p.colour], square)
+			pos.addPiece(p.colour, p.piece, square)
 			square++
 		} else if ch == '/' {
 			continue
@@ -91,7 +90,7 @@ func NewPosition(fen string) (pos position) {
 	return
 }
 
-func (p position) Print() {
+func (p position) Output() {
 	boardString := make([]string, 64)
 	for piece, board := range p.pieces {
 		if board == 0 {
@@ -109,55 +108,67 @@ func (p position) Print() {
 		}
 	}
 
-	for i, p := range boardString {
+	for i, piece := range boardString {
 		if i%8 == 0 {
 			fmt.Print("+---+---+---+---+---+---+---+---+\n|")
 		}
-		if p == "" {
+		if piece == "" {
 			fmt.Print("   |")
 		} else {
-			fmt.Print(" ", p, " |")
+			fmt.Print(" ", piece, " |")
 		}
 		if i%8 == 7 {
-			fmt.Print("\n")
+			switch i / 8 {
+			case 0:
+				fmt.Println(" HASH:", p.hash)
+			case 1:
+				fmt.Println(" Turn", p.fullMoveCounter, "| 50 Move Counter:", p.fiftyMoveCounter)
+			case 2:
+				if p.toMove == WHITE {
+					fmt.Println(" White to move.")
+				} else {
+					fmt.Println(" Black to move.")
+				}
+			case 3:
+				if p.castleWK && p.castleWQ {
+					fmt.Println(" White can castle to both sides.")
+				} else if p.castleWK {
+					fmt.Println(" White can castle kingside.")
+				} else if p.castleWQ {
+					fmt.Println(" White can castle queenside.")
+				} else {
+					fmt.Println(" White can no longer castle.")
+				}
+			case 4:
+				if p.castleBK && p.castleBQ {
+					fmt.Println(" Black can castle to both sides.")
+				} else if p.castleBK {
+					fmt.Println(" Black can castle kingside.")
+				} else if p.castleBQ {
+					fmt.Println(" Black can castle queenside.")
+				} else {
+					fmt.Println(" Black can no longer castle.")
+				}
+			case 5:
+				if p.enpassant >= 0 {
+					fmt.Println(" Enpassant square: ", squareToAlgebraic(p.enpassant))
+				} else {
+					fmt.Print("\n")
+				}
+			case 6:
+				if p.toMove == WHITE && p.isSquareAttacked(leftBit(p.pieces[KING]&p.colours[WHITE]), BLACK) {
+					fmt.Println(" White king is in check!")
+				} else if p.toMove == BLACK && p.isSquareAttacked(leftBit(p.pieces[KING]&p.colours[BLACK]), WHITE) {
+					fmt.Println(" Black king is in check!")
+				} else {
+					fmt.Print("\n")
+				}
+			default:
+				fmt.Print("\n")
+			}
 		}
 	}
 	fmt.Print("+---+---+---+---+---+---+---+---+\n")
-
-	fmt.Println("HASH:", p.hash)
-	fmt.Println("Turn ", p.fullMoveCounter)
-	if p.toMove == WHITE {
-		fmt.Println("White to move.")
-	} else {
-		fmt.Println("Black to move.")
-	}
-
-	if p.castleWK && p.castleWQ {
-		fmt.Println("White can castle to both sides.")
-	} else if p.castleWK {
-		fmt.Println("White can castle kingside.")
-	} else if p.castleWQ {
-		fmt.Println("White can castle queenside.")
-	}
-
-	if p.castleBK && p.castleBQ {
-		fmt.Println("Black can castle to both sides.")
-	} else if p.castleBK {
-		fmt.Println("Black can castle kingside.")
-	} else if p.castleBQ {
-		fmt.Println("Black can castle queenside.")
-	}
-
-	if p.enpassant >= 0 {
-		fmt.Println("Enpassant square: ", squareToAlgebraic(p.enpassant))
-	}
-
-	fmt.Println("50 Move Counter: ", p.fiftyMoveCounter)
-	if p.toMove == WHITE && p.isSquareAttacked(leftBit(p.pieces[KING]&p.colours[WHITE]), BLACK) {
-		fmt.Println("White king is in check!")
-	} else if p.toMove == BLACK && p.isSquareAttacked(leftBit(p.pieces[KING]&p.colours[BLACK]), WHITE) {
-		fmt.Println("Black king is in check!")
-	}
 }
 
 //tests whether a space is attacked by the provided colour player

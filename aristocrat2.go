@@ -13,13 +13,12 @@ import (
 
 var game position
 var table *hashTable
+var usingHashtable bool
 
 func main() {
 	//defer profile.Start(profile.CPUProfile, profile.ProfilePath(".")).Stop()
 	game = NewPosition("")
-	game.Print()
-
-	table = NewHashTable(256)
+	game.Output()
 
 	//command line mode
 	cli := CLI{}
@@ -43,7 +42,7 @@ func (cli *CLI) gameLoop() {
 		case "setboard":
 			game = NewPosition(cmd[1])
 		case "display":
-			game.Print()
+			game.Output()
 		case "divide":
 			if len(cmd) == 2 {
 				plys, err := strconv.Atoi(cmd[1])
@@ -75,9 +74,21 @@ func (cli *CLI) gameLoop() {
 				for _, m := range list {
 					if m.from() == from && m.to() == to {
 						game.doMove(m)
-						game.Print()
+						game.Output()
 					}
 				}
+					}
+		case "search":
+			if len(cmd) == 2 {
+				depth, err := strconv.Atoi(cmd[1])
+				if err != nil {
+					fmt.Println("search command arhument must be integer")
+				}
+				startTime := time.Now()
+				score, nodes, best := search(&game, depth, -10000000, 10000000)
+				fmt.Printf("Eval: %.2f | Move: %s\n", float64(score)/100, best.string())
+				dur := time.Since(startTime).Seconds()
+				fmt.Printf("searched %d nodes in %.3fs (%.0f nps)\n", nodes, dur, float64(nodes)/dur)
 			}
 		}
 

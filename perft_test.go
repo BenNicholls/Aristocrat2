@@ -19,7 +19,7 @@ func TestPerft(t *testing.T) {
 	//compile perft tests
 	tests := make([]perftTest, 0)
 
-	table = NewHashTable(256)
+	table = NewHashTable(32)
 
 	testSuite, err := os.Open("test/perftSuite.epd")
 	if err != nil {
