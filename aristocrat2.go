@@ -20,6 +20,8 @@ func main() {
 	game = NewPosition("")
 	game.Output()
 
+	table = NewHashTable(128)
+
 	//command line mode
 	cli := CLI{}
 	cli.gameLoop()
@@ -60,7 +62,7 @@ func (cli *CLI) gameLoop() {
 				if err == nil {
 					startTime := time.Now()
 					nodes := multiThreadedPerft(&game, plys)
-					fmt.Printf("Perft %d: %d. (%.0f n/s)\n", plys, nodes, float64(nodes)/time.Since(startTime).Seconds())
+					fmt.Printf("Perft %d: %d. (%s)\n", plys, nodes, nps(nodes, time.Since(startTime).Seconds()))
 				} else {
 					fmt.Println("Perft command argument must be integer")
 				}
@@ -77,7 +79,7 @@ func (cli *CLI) gameLoop() {
 						game.Output()
 					}
 				}
-					}
+			}
 		case "search":
 			if len(cmd) == 2 {
 				depth, err := strconv.Atoi(cmd[1])
@@ -85,10 +87,22 @@ func (cli *CLI) gameLoop() {
 					fmt.Println("search command arhument must be integer")
 				}
 				startTime := time.Now()
-				score, nodes, best := search(&game, depth, -10000000, 10000000)
-				fmt.Printf("Eval: %.2f | Move: %s\n", float64(score)/100, best.string())
+				score, nodes, result, variation := search(&game, depth, -MATE*2, MATE*2, make(moveList, 0, 10))
+				switch result {
+				case checkmate:
+					if score == MATE {
+						fmt.Print("White is mating")
+					} else {
+						fmt.Print("Black is mating")
+					}
+				case stalemate:
+					fmt.Print("Stalemate")
+				default:
+					fmt.Printf("Eval: %.2f", float64(score)/100)
+				}
+				fmt.Printf(" | Variation: %s\n", variation.variation())
 				dur := time.Since(startTime).Seconds()
-				fmt.Printf("searched %d nodes in %.3fs (%.0f nps)\n", nodes, dur, float64(nodes)/dur)
+				fmt.Printf("searched %d nodes in %.3fs (%s)\n", nodes, dur, nps(nodes, time.Since(startTime).Seconds()))
 			}
 		}
 

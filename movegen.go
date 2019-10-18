@@ -13,6 +13,17 @@ func (ml moveList) output() {
 	fmt.Println(len(ml), "total moves.")
 }
 
+//returns a string assuming the mvovelist is a variation
+func (ml moveList) variation() (v string) {
+	if len(ml) == 0 {
+		return "No Moves."
+	}
+	for _, m := range ml {
+		v += m.string() + " "
+	}
+	return
+}
+
 func movegen(pos *position) (list moveList) {
 	list = make([]move, 0, 32)
 

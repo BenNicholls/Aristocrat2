@@ -400,7 +400,7 @@ func (p position) perft(n int) (nodes int) {
 		}
 	}
 
-	table.Store(p.hash, n, 0, nodes)
+	table.Store(p.hash, n, 0, nodes, 0)
 	return
 }
 

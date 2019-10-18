@@ -83,6 +83,9 @@ func (m move) turn() int {
 }
 
 func (m move) string() (s string) {
+	if m == move(0) {
+		return "No move"
+	}
 	if m.castleK() {
 		return "0-0"
 	} else if m.castleQ() {

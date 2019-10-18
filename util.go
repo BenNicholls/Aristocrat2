@@ -80,3 +80,14 @@ func generateKey() uint64 {
 	seed = (6364136223846793005*seed + 1442695040888963407) % 0x1000000000000000
 	return seed
 }
+
+func nps(nodes int, seconds float64) string {
+	nps := float64(nodes) / seconds
+	if nps > 1000000 {
+		return fmt.Sprintf("%.2f Mnps", nps/1000000)
+	} else if nps > 1000 {
+		return fmt.Sprintf("%.2f Knps", nps/1000)
+	}
+
+	return fmt.Sprintf("%.2f nps", nps)
+}

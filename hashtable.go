@@ -13,10 +13,11 @@ type hashTableEntry struct {
 	bestMove move
 	depth    int
 	score    int
+	result   result
 }
 
 //size of an entry in bytes
-const HASHTABLEENTRYSIZE int = 8 * 4
+const HASHTABLEENTRYSIZE int = 8 * 5
 
 //size is in megabytes
 func NewHashTable(size int) (ht *hashTable) {
@@ -28,7 +29,7 @@ func NewHashTable(size int) (ht *hashTable) {
 	return
 }
 
-func (ht *hashTable) Store(hash uint64, depth int, bestMove move, score int) {
+func (ht *hashTable) Store(hash uint64, depth int, bestMove move, score int, result result) {
 	if !usingHashtable {
 		return
 	}
@@ -42,6 +43,7 @@ func (ht *hashTable) Store(hash uint64, depth int, bestMove move, score int) {
 			depth:    depth,
 			bestMove: bestMove,
 			score:    score,
+			result:   result,
 		}
 		ht.Unlock()
 	} else { //attempt to rewrite. rewrite if depth is higher (deeper eval)
@@ -50,6 +52,7 @@ func (ht *hashTable) Store(hash uint64, depth int, bestMove move, score int) {
 			ht.table[hash%ht.size].depth = depth
 			ht.table[hash%ht.size].bestMove = bestMove
 			ht.table[hash%ht.size].score = score
+			ht.table[hash%ht.size].result = result
 			ht.Unlock()
 		}
 	}
