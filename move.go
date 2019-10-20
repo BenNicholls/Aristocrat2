@@ -1,6 +1,7 @@
 package main
 
 import "fmt"
+import "strings"
 
 //these magical numbers define the spec for the move data structure
 const (
@@ -98,6 +99,14 @@ func (m move) string() (s string) {
 	s += squareToAlgebraic(m.to())
 	if m.promote() {
 		s += "=" + pieceNamesShort[m.promotedPiece()]
+	}
+	return
+}
+
+func (m move) UCIstring() (s string) {
+	s = squareToAlgebraic(m.from()) + squareToAlgebraic(m.to())
+	if m.promote() {
+		s += strings.ToLower(pieceNamesShort[m.promotedPiece()])
 	}
 	return
 }

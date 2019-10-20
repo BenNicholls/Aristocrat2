@@ -31,7 +31,7 @@ func NewPosition(fen string) (pos position) {
 	pos = position{}
 	pos.moveHistory = make([]move, 0, 20)
 
-	if fen == "" {
+	if fen == "" || fen == "startpos" {
 		fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 	}
 

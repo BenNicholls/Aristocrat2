@@ -20,13 +20,22 @@ type hashTableEntry struct {
 const HASHTABLEENTRYSIZE int = 8 * 5
 
 //size is in megabytes
-func NewHashTable(size int) (ht *hashTable) {
+func newHashTable(size int) (ht *hashTable) {
 	ht = new(hashTable)
 	ht.size = uint64(size * 1024 * 1024 / HASHTABLEENTRYSIZE)
 	ht.table = make([]hashTableEntry, ht.size)
 	usingHashtable = true
 
 	return
+}
+
+func initHashTable() {
+	if hashSize == 0 {
+		table = &hashTable{}
+		usingHashtable = false
+	}
+	table = newHashTable(hashSize)
+	usingHashtable = true
 }
 
 func (ht *hashTable) Store(hash uint64, depth int, bestMove move, score int, result result) {
