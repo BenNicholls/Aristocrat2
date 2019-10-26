@@ -55,7 +55,7 @@ func (cli *CLIinterface) processCommand(cmd, params string) string {
 	case "move":
 		if params != "" {
 			from, to := algebraicToSquare(params[:2]), algebraicToSquare(params[2:4])
-			list := movegen(&game)
+			list, _ := movegen(&game)
 			for _, m := range list {
 				if m.from() == from && m.to() == to {
 					game.doMove(m)
@@ -133,7 +133,7 @@ func (uci *UCIinterface) processCommand(cmd, params string) string {
 				if len(m) == 5 {
 					p = displayLookup[rune(m[4])].piece
 				}
-				list := movegen(&game)
+				list, _ := movegen(&game)
 				for _, m := range list {
 					if m.from() == from && m.to() == to {
 						if !m.promote() || m.promotedPiece() == p {
@@ -189,6 +189,7 @@ func (uci *UCIinterface) processCommand(cmd, params string) string {
 		calcController.stopCalculators()
 	case "ponderhit":
 	case "quit":
+		calcController.stopCalculators()
 		return "quit"
 	case "cli": //return to command line mode
 		return "cli"

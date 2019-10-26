@@ -15,5 +15,5 @@ func eval(p *position) (score int) {
 		}
 	}
 
-	return
+	return scoreModifier[p.toMove] * score
 }

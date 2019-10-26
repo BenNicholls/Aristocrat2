@@ -24,8 +24,9 @@ func (ml moveList) variation() (v string) {
 	return
 }
 
-func movegen(pos *position) (list moveList) {
-	list = make([]move, 0, 32)
+func movegen(pos *position) (moveList, int) {
+	captureList := make(moveList, 0, 10)
+	nonCaptureList := make(moveList, 0, 20)
 
 	var pieces uint64
 	var opponentPieces uint64
@@ -43,20 +44,20 @@ func movegen(pos *position) (list moveList) {
 		}
 		forEachBit(moves, func(toSquare int) {
 			if (pos.toMove == WHITE && rank(toSquare) == 8) || (pos.toMove == BLACK && rank(toSquare) == 1) {
-				addPromosToMovelist(pos, &list, fromSquare, toSquare, pos.toMove, false)
+				addPromosToMovelist(pos, &nonCaptureList, fromSquare, toSquare, pos.toMove, false)
 			} else {
-				addToMovelist(pos, &list, packMove(fromSquare, toSquare, PAWN, 0, 0, pos.toMove, false))
+				addToMovelist(pos, &nonCaptureList, packMove(fromSquare, toSquare, PAWN, 0, 0, pos.toMove, false))
 			}
 		})
 		captures := pawnAttacks[pos.toMove][fromSquare] & (setBit(opponentPieces, pos.enpassant))
 		forEachBit(captures, func(toSquare int) {
 			if (pos.toMove == WHITE && rank(toSquare) == 8) || (pos.toMove == BLACK && rank(toSquare) == 1) {
-				addPromosToMovelist(pos, &list, fromSquare, toSquare, pos.toMove, true)
+				addPromosToMovelist(pos, &captureList, fromSquare, toSquare, pos.toMove, true)
 			} else {
 				if toSquare == pos.enpassant {
-					addToMovelist(pos, &list, packMove(fromSquare, toSquare, PAWN, 0, PAWN, pos.toMove, true))
+					addToMovelist(pos, &captureList, packMove(fromSquare, toSquare, PAWN, 0, PAWN, pos.toMove, true))
 				} else {
-					addToMovelist(pos, &list, packMove(fromSquare, toSquare, PAWN, 0, pos.getPieceOnSquare(toSquare), pos.toMove, true))
+					addToMovelist(pos, &captureList, packMove(fromSquare, toSquare, PAWN, 0, pos.getPieceOnSquare(toSquare), pos.toMove, true))
 				}
 			}
 		})
@@ -67,9 +68,9 @@ func movegen(pos *position) (list moveList) {
 		moves := knightMoves[fromSquare] &^ pieces
 		forEachBit(moves, func(toSquare int) {
 			if checkBit(opponentPieces, toSquare) {
-				addToMovelist(pos, &list, packMove(fromSquare, toSquare, KNIGHT, 0, pos.getPieceOnSquare(toSquare), pos.toMove, true))
+				addToMovelist(pos, &captureList, packMove(fromSquare, toSquare, KNIGHT, 0, pos.getPieceOnSquare(toSquare), pos.toMove, true))
 			} else {
-				addToMovelist(pos, &list, packMove(fromSquare, toSquare, KNIGHT, 0, 0, pos.toMove, false))
+				addToMovelist(pos, &nonCaptureList, packMove(fromSquare, toSquare, KNIGHT, 0, 0, pos.toMove, false))
 			}
 		})
 	})
@@ -79,9 +80,9 @@ func movegen(pos *position) (list moveList) {
 	moves := kingMoves[fromSquare] &^ pieces
 	forEachBit(moves, func(toSquare int) {
 		if checkBit(opponentPieces, toSquare) {
-			addToMovelist(pos, &list, packMove(fromSquare, toSquare, KING, 0, pos.getPieceOnSquare(toSquare), pos.toMove, true))
+			addToMovelist(pos, &captureList, packMove(fromSquare, toSquare, KING, 0, pos.getPieceOnSquare(toSquare), pos.toMove, true))
 		} else {
-			addToMovelist(pos, &list, packMove(fromSquare, toSquare, KING, 0, 0, pos.toMove, false))
+			addToMovelist(pos, &nonCaptureList, packMove(fromSquare, toSquare, KING, 0, 0, pos.toMove, false))
 		}
 	})
 	if !pos.isSquareAttacked(pos.getKingSquare(pos.toMove), opponent(pos.toMove)) { //can't castle out of check
@@ -89,14 +90,14 @@ func movegen(pos *position) (list moveList) {
 			if pos.castleWK {
 				if occupied&0b110 == 0 {
 					if !pos.isSquareAttacked(61, BLACK) && !pos.isSquareAttacked(62, BLACK) { //can't castle through or into check either
-						list = append(list, packMove(fromSquare, 62, KING, 0, 0, pos.toMove, false))
+						nonCaptureList = append(nonCaptureList, packMove(fromSquare, 62, KING, 0, 0, pos.toMove, false))
 					}
 				}
 			}
 			if pos.castleWQ {
 				if occupied&0b1110000 == 0 {
 					if !pos.isSquareAttacked(58, BLACK) && !pos.isSquareAttacked(59, BLACK) { //can't castle through or into check either
-						list = append(list, packMove(fromSquare, 58, KING, 0, 0, pos.toMove, false))
+						nonCaptureList = append(nonCaptureList, packMove(fromSquare, 58, KING, 0, 0, pos.toMove, false))
 					}
 				}
 			}
@@ -104,14 +105,14 @@ func movegen(pos *position) (list moveList) {
 			if pos.castleBK {
 				if occupied&(0b11<<57) == 0 {
 					if !pos.isSquareAttacked(5, WHITE) && !pos.isSquareAttacked(6, WHITE) { //can't castle through or into check either
-						list = append(list, packMove(fromSquare, 6, KING, 0, 0, pos.toMove, false))
+						nonCaptureList = append(nonCaptureList, packMove(fromSquare, 6, KING, 0, 0, pos.toMove, false))
 					}
 				}
 			}
 			if pos.castleBQ {
 				if occupied&(0b111<<60) == 0 {
 					if !pos.isSquareAttacked(2, WHITE) && !pos.isSquareAttacked(3, WHITE) { //can't castle through or into check either
-						list = append(list, packMove(fromSquare, 2, KING, 0, 0, pos.toMove, false))
+						nonCaptureList = append(nonCaptureList, packMove(fromSquare, 2, KING, 0, 0, pos.toMove, false))
 					}
 				}
 			}
@@ -135,14 +136,14 @@ func movegen(pos *position) (list moveList) {
 				moves = clearBit(moves, endSquare)
 
 				if checkBit(opponentPieces, endSquare) {
-					addToMovelist(pos, &list, packMove(fromSquare, endSquare, BISHOP, 0, pos.getPieceOnSquare(endSquare), pos.toMove, true))
+					addToMovelist(pos, &captureList, packMove(fromSquare, endSquare, BISHOP, 0, pos.getPieceOnSquare(endSquare), pos.toMove, true))
 				}
 			} else {
 				moves = moves | slidingMoves[dir][fromSquare]
 			}
 		}
 		forEachBit(moves, func(toSquare int) {
-			addToMovelist(pos, &list, packMove(fromSquare, toSquare, BISHOP, 0, 0, pos.toMove, false))
+			addToMovelist(pos, &nonCaptureList, packMove(fromSquare, toSquare, BISHOP, 0, 0, pos.toMove, false))
 		})
 	})
 
@@ -163,14 +164,14 @@ func movegen(pos *position) (list moveList) {
 				moves = clearBit(moves, endSquare)
 
 				if checkBit(opponentPieces, endSquare) {
-					addToMovelist(pos, &list, packMove(fromSquare, endSquare, ROOK, 0, pos.getPieceOnSquare(endSquare), pos.toMove, true))
+					addToMovelist(pos, &captureList, packMove(fromSquare, endSquare, ROOK, 0, pos.getPieceOnSquare(endSquare), pos.toMove, true))
 				}
 			} else {
 				moves = moves | slidingMoves[dir][fromSquare]
 			}
 		}
 		forEachBit(moves, func(toSquare int) {
-			addToMovelist(pos, &list, packMove(fromSquare, toSquare, ROOK, 0, 0, pos.toMove, false))
+			addToMovelist(pos, &nonCaptureList, packMove(fromSquare, toSquare, ROOK, 0, 0, pos.toMove, false))
 		})
 	})
 
@@ -191,18 +192,19 @@ func movegen(pos *position) (list moveList) {
 				moves = clearBit(moves, endSquare)
 
 				if checkBit(opponentPieces, endSquare) {
-					addToMovelist(pos, &list, packMove(fromSquare, endSquare, QUEEN, 0, pos.getPieceOnSquare(endSquare), pos.toMove, true))
+					addToMovelist(pos, &captureList, packMove(fromSquare, endSquare, QUEEN, 0, pos.getPieceOnSquare(endSquare), pos.toMove, true))
 				}
 			} else {
 				moves = moves | slidingMoves[dir][fromSquare]
 			}
 		}
 		forEachBit(moves, func(toSquare int) {
-			addToMovelist(pos, &list, packMove(fromSquare, toSquare, QUEEN, 0, 0, pos.toMove, false))
+			addToMovelist(pos, &nonCaptureList, packMove(fromSquare, toSquare, QUEEN, 0, 0, pos.toMove, false))
 		})
 	})
 
-	return
+	list := append(captureList, nonCaptureList...)
+	return list, len(captureList)
 }
 
 func addToMovelist(pos *position, ml *moveList, m move) {

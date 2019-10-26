@@ -389,7 +389,7 @@ func (p position) perft(n int) (nodes int) {
 			return entry.score
 		}
 	}
-	list := movegen(&p)
+	list, _ := movegen(&p)
 	if n == 1 {
 		return len(list)
 	} else {
@@ -400,7 +400,7 @@ func (p position) perft(n int) (nodes int) {
 		}
 	}
 
-	table.Store(p.hash, n, 0, nodes, 0)
+	table.Store(p.hash, n, 0, nodes, 0, EXACT)
 	return
 }
 
@@ -408,7 +408,7 @@ func (p position) divide(n int) {
 	if n == 1 {
 		return
 	}
-	list := movegen(&p)
+	list, _ := movegen(&p)
 	total := 0
 	for _, m := range list {
 		nextPosition := p

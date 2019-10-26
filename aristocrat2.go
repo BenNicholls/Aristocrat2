@@ -50,7 +50,7 @@ func main() {
 }
 
 func multiThreadedPerft(pos *position, plys int) (nodes int) {
-	list := movegen(pos)
+	list, _ := movegen(pos)
 	if plys <= 0 {
 		return 0
 	} else if plys == 1 {
