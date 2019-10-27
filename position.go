@@ -27,7 +27,7 @@ type position struct {
 	hash uint64 //zobrist hash. generated at start, then incrementally updated.
 }
 
-func NewPosition(fen string) (pos position) {
+func newPosition(fen string) (pos position) {
 	pos = position{}
 	pos.moveHistory = make([]move, 0, 20)
 
@@ -392,12 +392,12 @@ func (p position) perft(n int) (nodes int) {
 	list, _ := movegen(&p)
 	if n == 1 {
 		return len(list)
-	} else {
-		for _, m := range list {
-			nextPosition := p
-			nextPosition.doMove(m)
-			nodes += nextPosition.perft(n - 1)
-		}
+	}
+
+	for _, m := range list {
+		nextPosition := p
+		nextPosition.doMove(m)
+		nodes += nextPosition.perft(n - 1)
 	}
 
 	table.Store(p.hash, n, 0, nodes, 0, EXACT)

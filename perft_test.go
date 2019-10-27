@@ -55,7 +55,7 @@ func TestPerft(t *testing.T) {
 	}
 
 	for tNum, perft := range tests {
-		pos := NewPosition(perft.fen)
+		pos := newPosition(perft.fen)
 		for i, val := range perft.vals {
 			fmt.Printf("(%d/%d) %s | depth: %d, expecting %d ...", tNum+1, len(tests), perft.fen, perft.depths[i], val)
 			n := multiThreadedPerft(&pos, perft.depths[i])

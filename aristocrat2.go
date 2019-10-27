@@ -21,7 +21,7 @@ var hashSize int = 2
 
 func main() {
 	//defer profile.Start(profile.CPUProfile, profile.ProfilePath(".")).Stop()
-	game = NewPosition("")
+	game = newPosition("")
 	initHashTable()
 
 	//command line mode

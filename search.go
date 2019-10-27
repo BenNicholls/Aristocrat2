@@ -67,7 +67,7 @@ func (cc *calculationController) beginCalculating() {
 
 func (cc *calculationController) doneCalculating() {
 	cc.Lock()
-	cc.calculators -= 1
+	cc.calculators--
 	if cc.calculators == 0 {
 		cc.stop = false
 		cc.timeForMove = 0
@@ -75,19 +75,20 @@ func (cc *calculationController) doneCalculating() {
 	cc.Unlock()
 }
 
-func search(p *position, depth, alpha, beta int, currentVariation moveList) (score, nodes int, result result, bestVariation moveList) {
+func search(p *position, depth, alpha, beta int) (score, nodes int, result result, continuation moveList) {
 	var candidateMove move
+	continuation = make(moveList, 0, 5)
 	if entry, ok := table.Load(p.hash); ok {
 		candidateMove = entry.bestMove
 		if entry.depth >= depth {
 			if entry.node == EXACT {
-				currentVariation = append(currentVariation, entry.bestMove)
-				return entry.score, 1, entry.result, currentVariation
+				continuation = append(continuation, entry.bestMove)
+				return entry.score, 1, entry.result, continuation
 			} else if entry.node == LOWER {
 				alpha = entry.score
 				if alpha >= beta { //beta cutoff.
-					currentVariation = append(currentVariation, entry.bestMove)
-					return entry.score, 1, entry.result, currentVariation
+					continuation = append(continuation, entry.bestMove)
+					return entry.score, 1, entry.result, continuation
 				}
 			}
 		}
@@ -96,21 +97,20 @@ func search(p *position, depth, alpha, beta int, currentVariation moveList) (sco
 	moves, numCaptures := movegen(p)
 	if len(moves) == 0 {
 		if p.isSquareAttacked(p.getKingSquare(p.toMove), opponent(p.toMove)) {
-			return -MATE, 1, checkmate, currentVariation
-		} else {
-			return 0, 1, stalemate, currentVariation
+			return -MATE, 1, checkmate, continuation
 		}
+		return 0, 1, stalemate, continuation
 	}
 
 	var quiesce bool
 	if depth <= 0 {
 		if numCaptures == 0 {
-			return eval(p), 1, none, currentVariation
+			return eval(p), 1, none, continuation
 		}
 
 		stand := eval(p)
 		if stand > beta {
-			return eval(p), 1, none, currentVariation
+			return eval(p), 1, none, continuation
 		}
 		if stand > alpha {
 			alpha = stand
@@ -139,16 +139,13 @@ func search(p *position, depth, alpha, beta int, currentVariation moveList) (sco
 
 	var next position
 	score = -MATE * 2
-	continuation := make(moveList, 0, 10)
 	for _, m := range moves {
 		if quiesce && (!m.capture() && m != candidateMove) {
 			break
 		}
 		next = *p
 		next.doMove(m)
-		currentVariation = append(currentVariation, m)
-		e, n, r, bv := search(&next, depth-1, -beta, -alpha, currentVariation)
-		currentVariation = currentVariation[:len(currentVariation)-1]
+		e, n, r, c := search(&next, depth-1, -beta, -alpha)
 		e = -e
 		nodes += n
 		if e > score {
@@ -158,17 +155,15 @@ func search(p *position, depth, alpha, beta int, currentVariation moveList) (sco
 		if e > alpha {
 			alpha = e
 			continuation = continuation[:0]
-			continuation = append(continuation, bv[len(currentVariation):]...)
+			continuation = append(continuation, m)
+			continuation = append(continuation, c...)
 		}
-		if alpha >= beta || calcController.needToStop() {
+		if alpha >= beta || (calcController.needToStop() && !quiesce) {
 			break
 		}
 	}
 
-	bestVariation = make(moveList, len(currentVariation))
-	copy(bestVariation, currentVariation)
 	if len(continuation) != 0 { //if we found a followup move, add it to the PV and store it
-		bestVariation = append(bestVariation, continuation...)
 		if alpha >= beta { //beta cutoff node
 			table.Store(p.hash, depth, continuation[0], score, result, LOWER)
 		} else {
@@ -186,7 +181,7 @@ func iterativeSearch(p *position, targetDepth int) (score, nodes int, result res
 	startTime := time.Now()
 	calcController.beginCalculating()
 	for depth := 1; depth <= targetDepth; depth++ {
-		score, nodes, result, bestVariation = search(p, depth, -MATE*2, MATE*2, make(moveList, 0, 10))
+		score, nodes, result, bestVariation = search(p, depth, -MATE*2, MATE*2)
 		score *= scoreModifier[p.toMove]
 		totalNodes += nodes
 		if engineMode.mode() == "uci" {

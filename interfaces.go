@@ -21,10 +21,10 @@ func (cli *CLIinterface) processCommand(cmd, params string) string {
 	case "quit":
 		return "quit"
 	case "new":
-		game = NewPosition("")
+		game = newPosition("")
 		game.Output()
 	case "setboard":
-		game = NewPosition(params)
+		game = newPosition(params)
 		game.Output()
 	case "display":
 		game.Output()
@@ -124,7 +124,7 @@ func (uci *UCIinterface) processCommand(cmd, params string) string {
 	case "ucinewgame":
 	case "position":
 		s := strings.Split(strings.TrimPrefix(params, "fen "), " moves ")
-		game = NewPosition(s[0])
+		game = newPosition(s[0])
 		if len(s) == 2 {
 			moves := strings.Split(s[1], " ")
 			for _, m := range moves {
