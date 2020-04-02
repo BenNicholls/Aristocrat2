@@ -39,7 +39,7 @@ func (cc *calculationController) calculating() bool {
 	return false
 }
 
-//Hi Future Ben, past Ben here. don't put the RUnlcok in a defer, it's really slow for some reason.
+//Hi Future Ben, past Ben here. don't put the RUnlock in a defer, it's really slow for some reason.
 func (cc *calculationController) needToStop() bool {
 	cc.RLock()
 	if cc.stop || (cc.timeForMove != 0 && int64(cc.timeForMove)-time.Since(cc.timer).Milliseconds() < 10) {
@@ -85,10 +85,12 @@ func search(p *position, depth, alpha, beta int) (score, nodes int, result resul
 				continuation = append(continuation, entry.bestMove)
 				return entry.score, 1, entry.result, continuation
 			} else if entry.node == LOWER {
-				alpha = entry.score
-				if alpha >= beta { //beta cutoff.
-					continuation = append(continuation, entry.bestMove)
-					return entry.score, 1, entry.result, continuation
+				if entry.score > alpha {
+					alpha = entry.score
+					if alpha >= beta { //beta cutoff.
+						continuation = append(continuation, entry.bestMove)
+						return entry.score, 1, entry.result, continuation
+					}
 				}
 			}
 		}
@@ -104,13 +106,12 @@ func search(p *position, depth, alpha, beta int) (score, nodes int, result resul
 
 	var quiesce bool
 	if depth <= 0 {
-		if numCaptures == 0 {
-			return eval(p), 1, none, continuation
-		}
-
 		stand := eval(p)
+		if numCaptures == 0 { //quiet position. return eval.
+			return stand, 1, none, continuation
+		}
 		if stand > beta {
-			return eval(p), 1, none, continuation
+			return beta, 1, none, continuation
 		}
 		if stand > alpha {
 			alpha = stand
@@ -122,16 +123,19 @@ func search(p *position, depth, alpha, beta int) (score, nodes int, result resul
 	if candidateMove != 0 {
 		for i, m := range moves {
 			if m == candidateMove {
-				if i != 0 {
-					moves[i] = moves[0]
-					moves[0] = candidateMove
-					if moves[i].capture() && i > numCaptures {
-						//if the replaced move is a capture, make sure it's with the captures at the start of the movelist
-						swap := moves[numCaptures]
-						moves[numCaptures] = moves[i]
-						moves[i] = swap
-					}
+				if i == 0 {
+					break
 				}
+
+				moves[i] = moves[0]
+				moves[0] = candidateMove
+				if moves[i].capture() && i > numCaptures {
+					//if the replaced move is a capture, make sure it's with the captures at the start of the movelist
+					swap := moves[numCaptures]
+					moves[numCaptures] = moves[i]
+					moves[i] = swap
+				}
+
 				break
 			}
 		}
@@ -140,7 +144,10 @@ func search(p *position, depth, alpha, beta int) (score, nodes int, result resul
 	var next position
 	score = -MATE * 2
 	for _, m := range moves {
-		if quiesce && (!m.capture() && m != candidateMove) {
+		if quiesce && !m.capture() { //break the search if we are quiescing and we're out of captures to check.
+			if m == candidateMove {
+				continue
+			}
 			break
 		}
 		next = *p
@@ -151,13 +158,14 @@ func search(p *position, depth, alpha, beta int) (score, nodes int, result resul
 		if e > score {
 			score = e
 			result = r
+			if e > alpha {
+				alpha = e
+				continuation = continuation[:0]
+				continuation = append(continuation, m)
+				continuation = append(continuation, c...)
+			}
 		}
-		if e > alpha {
-			alpha = e
-			continuation = continuation[:0]
-			continuation = append(continuation, m)
-			continuation = append(continuation, c...)
-		}
+
 		if alpha >= beta || (calcController.needToStop() && !quiesce) {
 			break
 		}
@@ -166,11 +174,13 @@ func search(p *position, depth, alpha, beta int) (score, nodes int, result resul
 	if len(continuation) != 0 { //if we found a followup move, add it to the PV and store it
 		if alpha >= beta { //beta cutoff node
 			table.Store(p.hash, depth, continuation[0], score, result, LOWER)
+			score = beta //fail-hard
 		} else {
 			table.Store(p.hash, depth, continuation[0], score, result, EXACT)
 		}
 	} else { //no improving move found.
 		table.Store(p.hash, depth, move(0), score, result, UPPER)
+		score = alpha //fail-hard
 	}
 
 	return
@@ -208,6 +218,7 @@ func iterativeSearch(p *position, targetDepth int) (score, nodes int, result res
 			break
 		}
 	}
+
 	if engineMode.mode() == "uci" {
 		fmt.Println("bestmove", bestVariation[0].UCIstring())
 	}

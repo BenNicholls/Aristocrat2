@@ -34,8 +34,6 @@ func newHashTable(size int) (ht *hashTable) {
 	ht = new(hashTable)
 	ht.size = uint64(size * 1024 * 1024 / HASHTABLEENTRYSIZE)
 	ht.table = make([]hashTableEntry, ht.size)
-	usingHashtable = true
-
 	return
 }
 
@@ -55,9 +53,7 @@ func (ht *hashTable) Store(hash uint64, depth int, bestMove move, score int, res
 	}
 	ht.Lock()
 	entry := ht.table[hash%ht.size]
-	ht.Unlock()
-	if entry.hash != hash { //new position beting stored. overwrite old data
-		ht.Lock()
+	if entry.hash != hash { //new position being stored. overwrite old data
 		ht.table[hash%ht.size] = hashTableEntry{
 			hash:     hash,
 			depth:    depth,
@@ -66,18 +62,16 @@ func (ht *hashTable) Store(hash uint64, depth int, bestMove move, score int, res
 			result:   result,
 			node:     node,
 		}
-		ht.Unlock()
 	} else { //attempt to rewrite. rewrite if depth is higher (deeper eval)
 		if entry.depth < depth {
-			ht.Lock()
 			ht.table[hash%ht.size].depth = depth
 			ht.table[hash%ht.size].bestMove = bestMove
 			ht.table[hash%ht.size].score = score
 			ht.table[hash%ht.size].result = result
 			ht.table[hash%ht.size].node = node
-			ht.Unlock()
 		}
 	}
+	ht.Unlock()
 }
 
 func (ht *hashTable) Load(hash uint64) (entry hashTableEntry, ok bool) {
